@@ -1,0 +1,10 @@
+.git/**
+.github/**
+test/**
+scripts/**
+AGENTS.md
+.gitignore
+.pre-commit-config.yaml
+*.md
+!README.md
+!CHANGELOG.md
