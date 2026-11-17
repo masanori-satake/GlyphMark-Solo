@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.0] - 2026-11-17
+
+- First public release (Visual Studio Marketplace, Open VSX, GitHub Release). Feature set as of 0.2.0: catalog-based glyph badges for Explorer files and folders (FileDecoration only — icon themes untouched, no colour claimed), a one-screen assignment form with a glyph palette and drag & drop priority ordering, git-history aggregation in one pass per repository, folder aggregation with counts in tooltips, full English/Japanese UI. 100% local, no tracking, zero dependencies.
+
+---
+
+- 初回公開リリース（Visual Studio Marketplace、Open VSX、GitHub Release）。0.2.0 時点の機能一式：項目カタログによるファイル／フォルダへのグリフバッヂ（FileDecoration のみ使用し、アイコンテーマには触らず色も主張しない）、グリフパレットとドラッグ＆ドロップの優先順位変更を備えた一画面の割り当てフォーム、リポジトリごとの一括 git 履歴集計、件数付きツールチップによるフォルダ集約、英語／日本語の完全対応。100% ローカル、トラッキングなし、依存ゼロ。
+
 ## [0.2.0] - 2026-11-17
 
 - Priority now follows the order of the marks list itself (previously the fixed catalog order): when several items match, the earliest entry's glyph is shown. The assignment form reorders rows by drag & drop (handle at the left edge of each row), lists assigned rows first in saved order, and the form intro and the `glyphMark.marks` setting description state the rule.

@@ -120,5 +120,5 @@
     "update-version": "node scripts/update-version.js",
     "vscode:prepublish": "npm run check && npm test"
   },
-  "version": "0.2.0"
+  "version": "1.0.0"
 }
