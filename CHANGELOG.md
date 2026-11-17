@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.1] - 2026-11-17
+
+- Fixed the commands not being findable by the extension name in the Command Palette: both commands now declare the "GlyphMark" category, so they appear as "GlyphMark: Edit Mark Assignments" and "GlyphMark: Recalculate Marks".
+
+---
+
+- コマンドパレットで拡張名からコマンドを探せなかった問題を修正：両コマンドにカテゴリ「GlyphMark」を付け、「GlyphMark: マーク割り当てを編集」「GlyphMark: マークを再計算」と表示されるようにしました。
+
 ## [0.1.0] - 2026-11-17
 
 - Initial release: assign your own glyphs to a catalog of items and matching files and folders carry the glyph as an Explorer badge (FileDecoration). Your icon theme is never touched and no colour is claimed, so Git decorations keep working as before.

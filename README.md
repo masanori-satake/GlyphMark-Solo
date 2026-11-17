@@ -2,7 +2,7 @@
 
 Your own glyphs on the files and folders you hunt for.
 
-Version 0.1.0 — initial release.
+Version 0.1.1 — command palette category fix.
 
 The Explorer tree shows file types, but not what *you* are looking for. GlyphMark-Solo lets you assign a glyph — a mark you choose yourself, like a stamp on a map — to a catalog of items. Matching files and folders then carry that glyph next to their name, so what you hunt for floats up by glyph alone, without searching.
 
