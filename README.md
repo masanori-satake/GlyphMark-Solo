@@ -2,7 +2,7 @@
 
 Your own glyphs on the files and folders you hunt for.
 
-Version 0.1.1 — command palette category fix.
+Version 0.2.0 — drag & drop priority ordering in the assignment form.
 
 The Explorer tree shows file types, but not what *you* are looking for. GlyphMark-Solo lets you assign a glyph — a mark you choose yourself, like a stamp on a map — to a catalog of items. Matching files and folders then carry that glyph next to their name, so what you hunt for floats up by glyph alone, without searching.
 
@@ -24,7 +24,7 @@ The Explorer tree shows file types, but not what *you* are looking for. GlyphMar
 | Path contains text | relative path contains a string (repeatable) |
 | Large file | size at least N KB |
 
-When several items match, the badge shows the first one in catalog order; the tooltip lists every match with its evidence (for example `✨ Created recently — created 5d ago`). A folder carries the highest-priority mark found inside it, with counts in its tooltip (`📌 Path contains text — 12 inside`). Toggle folder marks with `glyphMark.folderBadges`.
+When several items match, the badge shows the first one in list order — the list order is the priority order, and the assignment form reorders rows by drag & drop; the tooltip lists every match with its evidence (for example `✨ Created recently — created 5d ago`). A folder carries the highest-priority mark found inside it, with counts in its tooltip (`📌 Path contains text — 12 inside`). Toggle folder marks with `glyphMark.folderBadges`.
 
 ## Assigning marks
 
@@ -74,7 +74,7 @@ Run **GlyphMark: Recalculate Marks** after big history changes; commits and chec
 | パスに文字を含む | 相対パスに文字列を含む（複数行可） |
 | サイズが大きい | サイズが N KB 以上 |
 
-複数項目に一致した場合、バッヂはカタログ順で最初の1つになり、ツールチップに一致した全項目と根拠（例：`✨ 新しく作られた — 作成 5日前`）が並びます。フォルダには配下の最優先マークが付き、件数はツールチップに出ます（`📌 パスに文字を含む — 配下に 12 件`）。フォルダのマークは `glyphMark.folderBadges` で切り替えます。
+複数項目に一致した場合、バッヂは並び順で最初の1つになります。並び順がそのまま優先順位で、割り当てフォームでは行をドラッグ＆ドロップで並び替えられます。ツールチップに一致した全項目と根拠（例：`✨ 新しく作られた — 作成 5日前`）が並びます。フォルダには配下の最優先マークが付き、件数はツールチップに出ます（`📌 パスに文字を含む — 配下に 12 件`）。フォルダのマークは `glyphMark.folderBadges` で切り替えます。
 
 ## マークの割り当て
 

@@ -2,7 +2,8 @@
 
 // GlyphMark-Solo core logic (no VS Code dependency, unit-testable).
 // Model: a fixed catalog of items; each item may carry a user-chosen glyph.
-// Only items with a glyph do anything. Priority follows catalog order.
+// Only items with a glyph do anything. Priority follows the order of the
+// marks list itself: earlier entries win (the form reorders by drag & drop).
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_TIMES_PER_FILE = 1000;
@@ -97,8 +98,8 @@ function parseGitLog(text) {
 }
 
 // Validate the raw glyphMark.marks setting. Returns { marks, errors } where
-// marks are normalized and sorted by catalog order (stable within an item),
-// and errors describe dropped entries.
+// marks are normalized, kept in list order (the list order is the priority
+// order), and errors describe dropped entries.
 function validateMarks(raw) {
   const marks = [];
   const errors = [];
@@ -144,8 +145,6 @@ function validateMarks(raw) {
     }
     marks.push(mark);
   });
-  const order = new Map(CATALOG.map((c, i) => [c.id, i]));
-  marks.sort((a, b) => order.get(a.item) - order.get(b.item));
   return { marks, errors };
 }
 
@@ -261,7 +260,7 @@ function tooltipFor(matches, ctx, now, lang) {
 // Aggregate file results into folder results.
 // fileMatches: Map relPath -> matched marks array (only non-empty entries needed).
 // Returns Map relDir -> { mark, count, all: [{ mark, count }] } where mark is the
-// highest-priority (lowest catalog order, then mark order) mark present below.
+// highest-priority (earliest in the marks list) mark present below.
 function aggregateFolders(fileMatches, marks) {
   const markIndex = new Map(marks.map((m, i) => [m, i]));
   const perDir = new Map();

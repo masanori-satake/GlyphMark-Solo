@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.0] - 2026-11-17
+
+- Priority now follows the order of the marks list itself (previously the fixed catalog order): when several items match, the earliest entry's glyph is shown. The assignment form reorders rows by drag & drop (handle at the left edge of each row), lists assigned rows first in saved order, and the form intro and the `glyphMark.marks` setting description state the rule.
+
+---
+
+- 優先順位が、固定のカタログ順から、マーク一覧の並び順そのものに変わりました：複数該当した場合は一番上のエントリのグリフが表示されます。割り当てフォームでは行左端のつまみでドラッグ＆ドロップの並び替えができ、割り当て済みの行が保存順に先頭へ並びます。フォームの説明文と `glyphMark.marks` の設定説明にもこの規則を明記しました。
+
 ## [0.1.1] - 2026-11-17
 
 - Fixed the commands not being findable by the extension name in the Command Palette: both commands now declare the "GlyphMark" category, so they appear as "GlyphMark: Edit Mark Assignments" and "GlyphMark: Recalculate Marks".

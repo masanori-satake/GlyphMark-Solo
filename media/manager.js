@@ -9,7 +9,8 @@ const vscode = acquireVsCodeApi();
 const STR = {
   en: {
     title: 'Mark assignments',
-    intro: 'Pick a mark for an item and matching files and folders get that mark in the Explorer. Items without a mark do nothing.',
+    intro: 'Pick a mark for an item and matching files and folders get that mark in the Explorer. Items without a mark do nothing. When several items match, the topmost row wins — drag rows by the handle to change the priority.',
+    dragHint: 'Drag to change priority',
     saveTo: 'Save to',
     user: 'User settings',
     workspace: 'Workspace settings',
@@ -33,7 +34,8 @@ const STR = {
   },
   ja: {
     title: 'マーク割り当て',
-    intro: '項目にマークを選ぶと、該当するファイルとフォルダにそのマークが付きます。マークのない項目は何もしません。',
+    intro: '項目にマークを選ぶと、該当するファイルとフォルダにそのマークが付きます。マークのない項目は何もしません。複数該当した場合は一番上の行のマークが付きます。左端のつまみをドラッグすると優先順位を変えられます。',
+    dragHint: 'ドラッグで優先順位を変更',
     saveTo: '保存先',
     user: 'ユーザー設定',
     workspace: 'ワークスペース設定',
@@ -60,6 +62,7 @@ const STR = {
 let S = null; // last state from the extension
 let rows = []; // working copy: { item, glyph, params: {key: value}, count }
 let openPaletteFor = -1;
+let listEl = null; // current .list element, for drag & drop reordering
 
 function t() {
   return STR[S && S.lang === 'ja' ? 'ja' : 'en'];
@@ -74,24 +77,22 @@ function el(tag, cls, text) {
 
 function buildRows() {
   rows = [];
-  const byItem = new Map();
-  (S.marks || []).forEach((m, i) => {
-    if (!byItem.has(m.item)) byItem.set(m.item, []);
-    byItem.get(m.item).push({ entry: m, count: (S.countsByRaw || [])[i] });
+  const catalogById = new Map(S.catalog.map((c) => [c.id, c]));
+  // Assigned rows first, in saved order: the saved order is the priority order.
+  (S.marks || []).forEach((entry, i) => {
+    const item = catalogById.get(entry.item);
+    if (!item) return;
+    const params = {};
+    for (const p of item.params) params[p.key] = entry[p.key] !== undefined ? entry[p.key] : p.def;
+    rows.push({ item: item.id, glyph: entry.glyph || '', params, count: (S.countsByRaw || [])[i] });
   });
+  // Then catalog items with no assignment yet, in catalog order.
+  const assigned = new Set(rows.map((r) => r.item));
   for (const item of S.catalog) {
-    const stored = byItem.get(item.id) || [];
-    if (stored.length) {
-      for (const { entry, count } of stored) {
-        const params = {};
-        for (const p of item.params) params[p.key] = entry[p.key] !== undefined ? entry[p.key] : p.def;
-        rows.push({ item: item.id, glyph: entry.glyph || '', params, count });
-      }
-    } else {
-      const params = {};
-      for (const p of item.params) params[p.key] = p.def;
-      rows.push({ item: item.id, glyph: '', params, count: null });
-    }
+    if (assigned.has(item.id)) continue;
+    const params = {};
+    for (const p of item.params) params[p.key] = p.def;
+    rows.push({ item: item.id, glyph: '', params, count: null });
   }
 }
 
@@ -138,6 +139,17 @@ function render() {
   }
 
   const list = el('div', 'list');
+  listEl = list;
+  list.addEventListener('dragover', (e) => {
+    const dragging = list.querySelector('.row.dragging');
+    if (!dragging) return;
+    e.preventDefault();
+    const after = [...list.querySelectorAll('.row:not(.dragging)')].find(
+      (ch) => e.clientY <= ch.getBoundingClientRect().top + ch.offsetHeight / 2
+    );
+    if (after) list.insertBefore(dragging, after);
+    else list.appendChild(dragging);
+  });
   rows.forEach((row, idx) => list.appendChild(renderRow(row, idx)));
   app.appendChild(list);
 
@@ -156,6 +168,26 @@ function renderRow(row, idx) {
   const item = S.catalog.find((c) => c.id === row.item);
   const names = S.itemNames[row.item] || {};
   const wrap = el('div', 'row');
+  wrap._row = row;
+
+  const grip = el('span', 'grip', '⠿');
+  grip.title = str.dragHint;
+  grip.addEventListener('mousedown', () => {
+    wrap.draggable = true;
+  });
+  wrap.addEventListener('dragstart', (e) => {
+    openPaletteFor = -1;
+    wrap.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', row.item);
+  });
+  wrap.addEventListener('dragend', () => {
+    wrap.draggable = false;
+    wrap.classList.remove('dragging');
+    if (listEl) rows = [...listEl.children].filter((ch) => ch._row).map((ch) => ch._row);
+    render();
+  });
+  wrap.appendChild(grip);
 
   const glyphBtn = el('button', 'glyph' + (row.glyph ? '' : ' empty'), row.glyph || '＋');
   glyphBtn.title = row.glyph || str.none;

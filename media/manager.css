@@ -50,6 +50,19 @@ h1 {
   border-radius: 6px;
   padding: 8px 10px;
 }
+.grip {
+  cursor: grab;
+  color: var(--vscode-descriptionForeground);
+  user-select: none;
+  padding: 0 2px;
+  font-size: 15px;
+}
+.grip:active {
+  cursor: grabbing;
+}
+.row.dragging {
+  opacity: 0.45;
+}
 .glyph {
   width: 44px;
   height: 44px;

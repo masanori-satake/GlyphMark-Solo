@@ -50,7 +50,7 @@ test('parseGitLog tolerates empty and malformed input', () => {
   assert.equal(core.parseGitLog('\x1enotanumber\x1fx\x1fy\n\nz.js\n').size, 0);
 });
 
-test('validateMarks normalizes, sorts by catalog order, reports errors', () => {
+test('validateMarks normalizes, keeps list order as priority, reports errors', () => {
   const { marks, errors } = core.validateMarks([
     { item: 'pathContains', glyph: '📌', text: 'docs/' },
     { item: 'createdRecent', glyph: '✨' },
@@ -60,9 +60,9 @@ test('validateMarks normalizes, sorts by catalog order, reports errors', () => {
     { item: 'nameContains', glyph: 'a', text: '  ' },
   ]);
   assert.equal(marks.length, 2);
-  assert.equal(marks[0].item, 'createdRecent'); // catalog order beats input order
-  assert.equal(marks[0].days, 30); // default filled
-  assert.equal(marks[1].item, 'pathContains');
+  assert.equal(marks[0].item, 'pathContains'); // list order is kept: it is the priority order
+  assert.equal(marks[1].item, 'createdRecent');
+  assert.equal(marks[1].days, 30); // default filled
   assert.equal(errors.length, 4);
 });
 
