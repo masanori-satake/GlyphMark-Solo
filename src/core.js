@@ -39,13 +39,29 @@ const ITEM_NAMES = {
   sizeLarge: { en: 'Large file', ja: 'サイズが大きい' },
 };
 
-// Glyphs offered in the picker palette. Every entry must satisfy glyphOk().
-const PALETTE = [
-  '✨', '⭐', '🔥', '🧊', '🌱',
-  '⚠', '👀', '✋', '📌', '📝',
-  '🐛', '🔍', '✅', '📦', '🧪',
-  '🎨', '🔒', '💡', '🚧', '🏷',
-];
+// Glyph palettes offered in the picker. Every entry must satisfy glyphOk().
+// A badge is a plain string and the editor owns the rendering font, so a
+// "font switch" is really a character-set switch: 'symbol' glyphs are
+// monochrome characters from ordinary UI fonts and sit quietly next to
+// Git's letter badges, while 'emoji' glyphs render in colour.
+const PALETTES = {
+  symbol: [
+    '✦', '★', '☆', '●', '○',
+    '▲', '△', '◆', '◇', '■',
+    '□', '✚', '✖', '✓', '✔',
+    '↻', '♥', '♦', '♠', '♣',
+  ],
+  emoji: [
+    '✨', '⭐', '🔥', '🧊', '🌱',
+    '⚠', '👀', '✋', '📌', '📝',
+    '🐛', '🔍', '✅', '📦', '🧪',
+    '🎨', '🔒', '💡', '🚧', '🏷',
+  ],
+};
+const PALETTE_STYLES = Object.keys(PALETTES);
+const DEFAULT_PALETTE_STYLE = 'symbol';
+// The default style's glyphs (kept as the classic single-palette export).
+const PALETTE = PALETTES[DEFAULT_PALETTE_STYLE];
 
 function catalogItem(id) {
   return CATALOG.find((c) => c.id === id) || null;
@@ -301,6 +317,9 @@ module.exports = {
   CATALOG,
   ITEM_NAMES,
   PALETTE,
+  PALETTES,
+  PALETTE_STYLES,
+  DEFAULT_PALETTE_STYLE,
   catalogItem,
   glyphOk,
   parseGitLog,

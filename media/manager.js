@@ -17,6 +17,8 @@ const STR = {
     save: 'Save',
     saved: 'Saved',
     none: 'None',
+    styleSymbol: 'Symbols',
+    styleEmoji: 'Emoji',
     custom: 'Custom',
     apply: 'Use',
     addRow: 'Add another row',
@@ -42,6 +44,8 @@ const STR = {
     save: '保存',
     saved: '保存しました',
     none: 'なし',
+    styleSymbol: 'シンボル',
+    styleEmoji: '絵文字',
     custom: '任意',
     apply: '使う',
     addRow: '行を追加',
@@ -62,6 +66,7 @@ const STR = {
 let S = null; // last state from the extension
 let rows = []; // working copy: { item, glyph, params: {key: value}, count }
 let openPaletteFor = -1;
+let paletteStyle = 'symbol'; // which picker palette is shown: 'symbol' | 'emoji'
 let listEl = null; // current .list element, for drag & drop reordering
 
 function t() {
@@ -258,6 +263,18 @@ function renderRow(row, idx) {
 function renderPalette(row) {
   const str = t();
   const pal = el('div', 'palette');
+  const styles = el('div', 'palStyles');
+  for (const style of ['symbol', 'emoji']) {
+    const label = style === 'symbol' ? str.styleSymbol : str.styleEmoji;
+    const b = el('button', 'palStyle' + (paletteStyle === style ? ' sel' : ''), label);
+    b.addEventListener('click', () => {
+      paletteStyle = style;
+      vscode.postMessage({ type: 'paletteStyle', style });
+      render();
+    });
+    styles.appendChild(b);
+  }
+  pal.appendChild(styles);
   const noneBtn = el('button', 'pal none', str.none);
   noneBtn.addEventListener('click', () => {
     row.glyph = '';
@@ -265,7 +282,8 @@ function renderPalette(row) {
     render();
   });
   pal.appendChild(noneBtn);
-  for (const g of S.palette) {
+  const glyphs = (S.palettes && S.palettes[paletteStyle]) || S.palette || [];
+  for (const g of glyphs) {
     const b = el('button', 'pal' + (row.glyph === g ? ' sel' : ''), g);
     b.addEventListener('click', () => {
       row.glyph = g;
@@ -333,8 +351,12 @@ function onSave() {
 window.addEventListener('message', (ev) => {
   const data = ev.data;
   if (data && data.type === 'state') {
+    // A palette-style change also pushes fresh state; when the marks are
+    // unchanged, keep the working rows so unsaved edits are not lost.
+    const sameMarks = S && JSON.stringify(data.marks || []) === JSON.stringify(S.marks || []);
     S = data;
-    buildRows();
+    if (S.palettes && S.palettes[S.paletteStyle]) paletteStyle = S.paletteStyle;
+    if (!sameMarks) buildRows();
     render();
   }
 });

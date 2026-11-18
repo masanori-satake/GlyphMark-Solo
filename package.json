@@ -84,6 +84,19 @@
             "type": "object"
           },
           "type": "array"
+        },
+        "glyphMark.paletteStyle": {
+          "default": "symbol",
+          "description": "%config.paletteStyle.description%",
+          "enum": [
+            "symbol",
+            "emoji"
+          ],
+          "enumDescriptions": [
+            "%config.paletteStyle.symbol%",
+            "%config.paletteStyle.emoji%"
+          ],
+          "type": "string"
         }
       },
       "title": "%config.title%"
@@ -120,5 +133,5 @@
     "update-version": "node scripts/update-version.js",
     "vscode:prepublish": "npm run check && npm test"
   },
-  "version": "1.0.0"
+  "version": "1.1.0"
 }

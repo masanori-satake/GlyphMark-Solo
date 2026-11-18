@@ -145,6 +145,25 @@ h1 {
   border-color: var(--vscode-focusBorder);
   border-width: 2px;
 }
+.palStyles {
+  flex-basis: 100%;
+  display: flex;
+  gap: 6px;
+}
+.palStyle {
+  height: 28px;
+  padding: 0 12px;
+  font-size: 13px;
+  background: transparent;
+  color: var(--vscode-foreground);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.palStyle.sel {
+  border-color: var(--vscode-focusBorder);
+  border-width: 2px;
+}
 .pal.none,
 .pal.use {
   font-size: 13px;

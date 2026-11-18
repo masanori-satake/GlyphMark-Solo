@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.0] - 2026-11-18
+
+- Glyph palettes: the assignment form's picker now opens on monochrome symbols drawn in the editor's UI font (✦ ★ ● ▲ ◆ …), so marks sit quietly next to Git's letter badges. A Symbols / Emoji toggle in the palette switches to the colour emoji palette. The choice is kept in the new `glyphMark.paletteStyle` setting (default `symbol`); marks already assigned do not change.
+
+---
+
+- グリフパレットを追加：割り当てフォームのパレットが、エディタの UI フォントで単色に描かれるシンボル（✦ ★ ● ▲ ◆ …）から開くようになり、Git の文字バッヂの隣でも浮かなくなりました。パレット内の「シンボル／絵文字」切り替えで、カラーの絵文字パレットにも変更できます。選択は新しい設定 `glyphMark.paletteStyle`（既定は `symbol`）に保存され、割り当て済みのマークは変わりません。
+
 ## [1.0.0] - 2026-11-17
 
 - First public release (Visual Studio Marketplace, Open VSX, GitHub Release). Feature set as of 0.2.0: catalog-based glyph badges for Explorer files and folders (FileDecoration only — icon themes untouched, no colour claimed), a one-screen assignment form with a glyph palette and drag & drop priority ordering, git-history aggregation in one pass per repository, folder aggregation with counts in tooltips, full English/Japanese UI. 100% local, no tracking, zero dependencies.

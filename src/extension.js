@@ -196,12 +196,15 @@ function sendManagerState() {
     );
     return idx >= 0 ? state.counts[idx] || 0 : null;
   });
+  const styleRaw = vscode.workspace.getConfiguration('glyphMark').get('paletteStyle', core.DEFAULT_PALETTE_STYLE);
+  const paletteStyle = core.PALETTE_STYLES.includes(styleRaw) ? styleRaw : core.DEFAULT_PALETTE_STYLE;
   managerPanel.webview.postMessage({
     type: 'state',
     lang: LANG,
     catalog: core.CATALOG,
     itemNames: core.ITEM_NAMES,
-    palette: core.PALETTE,
+    palettes: core.PALETTES,
+    paletteStyle,
     marks: state.rawMarks || [],
     countsByRaw,
     errors: state.errors || [],
@@ -234,6 +237,8 @@ function openManager(context) {
     if (!msg || typeof msg !== 'object') return;
     if (msg.type === 'ready') {
       sendManagerState();
+    } else if (msg.type === 'paletteStyle' && core.PALETTE_STYLES.includes(msg.style)) {
+      await vscode.workspace.getConfiguration('glyphMark').update('paletteStyle', msg.style, vscode.ConfigurationTarget.Global);
     } else if (msg.type === 'save' && Array.isArray(msg.marks)) {
       const target =
         msg.target === 'workspace' && (vscode.workspace.workspaceFolders || []).length

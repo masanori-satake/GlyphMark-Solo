@@ -28,6 +28,18 @@ test('every palette glyph is badge-legal', () => {
   for (const g of core.PALETTE) assert.equal(core.glyphOk(g), true, g);
 });
 
+test('palettes: symbol is the default; every palette is badge-legal and unique', () => {
+  assert.equal(core.DEFAULT_PALETTE_STYLE, 'symbol');
+  assert.deepEqual(core.PALETTE, core.PALETTES.symbol);
+  assert.deepEqual(new Set(core.PALETTE_STYLES), new Set(['symbol', 'emoji']));
+  for (const style of core.PALETTE_STYLES) {
+    const glyphs = core.PALETTES[style];
+    assert.equal(glyphs.length, 20, style);
+    assert.equal(new Set(glyphs).size, glyphs.length, style);
+    for (const g of glyphs) assert.equal(core.glyphOk(g), true, `${style}: ${g}`);
+  }
+});
+
 test('parseGitLog aggregates first/last/times/author per file', () => {
   const text = logText([
     { atSec: 1800000000 - 100, name: 'Aki', email: 'aki@x', files: ['src/a.js', 'src/b.js'] },
