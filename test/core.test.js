@@ -85,6 +85,37 @@ test('validateMarks handles non-array input', () => {
   assert.deepEqual(core.validateMarks(undefined), { marks: [], errors: [] });
 });
 
+test('glyphOk rejects control, whitespace and invisible characters', () => {
+  assert.equal(core.glyphOk('\n'), false);
+  assert.equal(core.glyphOk('\t'), false);
+  assert.equal(core.glyphOk('\u0000'), false);
+  assert.equal(core.glyphOk('\u0085'), false); // C1 control
+  assert.equal(core.glyphOk(' '), false);
+  assert.equal(core.glyphOk(' A'), false);
+  assert.equal(core.glyphOk('\u200b'), false); // zero-width space
+  assert.equal(core.glyphOk('\u200d'), false); // zero-width joiner
+  assert.equal(core.glyphOk('\ufe0f'), false); // variation selector alone
+  assert.equal(core.glyphOk('\ufeff'), false); // BOM / zero-width no-break space
+  assert.equal(core.glyphOk('✓'), true);
+  assert.equal(core.glyphOk('⚠'), true);
+});
+
+test('validateMarks drops control-char glyphs and overlong labels', () => {
+  const bad = core.validateMarks([
+    { item: 'createdRecent', glyph: '\n' },
+    { item: 'updatedRecent', glyph: '★', label: 'x'.repeat(core.MAX_LABEL_LENGTH + 1) },
+  ]);
+  assert.equal(bad.marks.length, 0);
+  assert.equal(bad.errors.length, 2);
+
+  const ok = core.validateMarks([
+    { item: 'updatedRecent', glyph: '★', label: ` ${'x'.repeat(core.MAX_LABEL_LENGTH)} ` },
+  ]);
+  assert.equal(ok.errors.length, 0);
+  assert.equal(ok.marks.length, 1);
+  assert.equal(ok.marks[0].label.length, core.MAX_LABEL_LENGTH); // trimmed, at the cap
+});
+
 function ctxFor(over) {
   return Object.assign(
     { relPath: 'src/a.js', name: 'a.js', sizeBytes: 100, stats: null, mtimeMs: null, me: null },

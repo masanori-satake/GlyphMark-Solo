@@ -67,8 +67,22 @@ function catalogItem(id) {
   return CATALOG.find((c) => c.id === id) || null;
 }
 
+const MAX_LABEL_LENGTH = 100;
+
+// Characters that must never appear in a badge glyph: C0/C1 controls and
+// whitespace (a badge is rendered as-is, so these corrupt the Explorer
+// display), plus invisible format characters: zero-width spaces and
+// joiners, bidi controls, word joiner, BOM, soft hyphen, and variation
+// selectors, which would show as a blank or misleading badge.
+const GLYPH_FORBIDDEN =
+  /[\u0000-\u0020\u007f-\u00a0\u00ad\u061c\u180e\u200b-\u200f\u202a-\u202e\u2060-\u2064\ufe00-\ufe0f\ufeff]/;
+
 function glyphOk(g) {
-  return typeof g === 'string' && (g.length === 1 || g.length === 2);
+  return (
+    typeof g === 'string' &&
+    (g.length === 1 || g.length === 2) &&
+    !GLYPH_FORBIDDEN.test(g)
+  );
 }
 
 // Parse the output of:
@@ -140,7 +154,14 @@ function validateMarks(raw) {
       return;
     }
     const mark = { item: entry.item, glyph: entry.glyph };
-    if (typeof entry.label === 'string' && entry.label.trim()) mark.label = entry.label.trim();
+    if (typeof entry.label === 'string' && entry.label.trim()) {
+      const label = entry.label.trim();
+      if (label.length > MAX_LABEL_LENGTH) {
+        errors.push(`${where}: label must be ${MAX_LABEL_LENGTH} characters or fewer`);
+        return;
+      }
+      mark.label = label;
+    }
     for (const p of item.params) {
       const v = entry[p.key];
       if (p.kind === 'number') {
@@ -314,6 +335,7 @@ function folderTooltip(folderResult, lang) {
 
 module.exports = {
   DAY_MS,
+  MAX_LABEL_LENGTH,
   CATALOG,
   ITEM_NAMES,
   PALETTE,

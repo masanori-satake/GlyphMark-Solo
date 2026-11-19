@@ -45,6 +45,7 @@
               "glyph": {
                 "maxLength": 2,
                 "minLength": 1,
+                "pattern": "^[^\\u0000-\\u0020\\u007f-\\u00a0\\u00ad\\u061c\\u180e\\u200b-\\u200f\\u202a-\\u202e\\u2060-\\u2064\\ufe00-\\ufe0f\\ufeff]+$",
                 "type": "string"
               },
               "item": {
@@ -66,6 +67,7 @@
                 "type": "number"
               },
               "label": {
+                "maxLength": 100,
                 "type": "string"
               },
               "minCount": {
@@ -102,6 +104,19 @@
       "title": "%config.title%"
     }
   },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "description": "In Restricted Mode the extension does not run git in the workspace and ignores workspace-folder values of glyphMark.marks; marks from user settings and file times/sizes still work.",
+      "restrictedConfigurations": [
+        "glyphMark.marks"
+      ],
+      "supported": "limited"
+    },
+    "virtualWorkspaces": {
+      "description": "GlyphMark reads local git history and file stats, so it does not run in virtual workspaces.",
+      "supported": false
+    }
+  },
   "description": "%extension.description%",
   "displayName": "GlyphMark-Solo",
   "engines": {
@@ -133,5 +148,5 @@
     "update-version": "node scripts/update-version.js",
     "vscode:prepublish": "npm run check && npm test"
   },
-  "version": "1.1.0"
+  "version": "1.1.1"
 }

@@ -2,18 +2,32 @@
 
 const vscode = require('vscode');
 const path = require('path');
+const crypto = require('crypto');
 const { execFile } = require('child_process');
 const core = require('./core');
+
+// Bounds for the per-folder collection. The git log still covers the full
+// history (some items, e.g. untouchedLong, need the oldest commits), but a
+// single git call may not buffer unbounded output or run unbounded time;
+// hitting a bound is surfaced to the user (see gitLogFailed) instead of
+// silently dropping the git-based marks.
+const GIT_MAX_BUFFER = 32 * 1024 * 1024;
+const GIT_TIMEOUT_MS = 60000;
+const STAT_BATCH_SIZE = 64;
 
 const LANG = vscode.env.language && vscode.env.language.startsWith('ja') ? 'ja' : 'en';
 const STR = {
   en: {
     refreshed: 'GlyphMark: marks recalculated',
     editAssignments: 'Edit Mark Assignments',
+    gitLogFailed: (name) =>
+      `Git history for "${name}" could not be read (too large or timed out), so git-based marks are off for that folder. File time/size marks still apply.`,
   },
   ja: {
     refreshed: 'GlyphMark: マークを再計算しました',
     editAssignments: 'マーク割り当てを編集',
+    gitLogFailed: (name) =>
+      `「${name}」の Git 履歴を読めませんでした（大きすぎるか、時間切れ）。このフォルダでは Git 由来のマークは付きません。更新日時・サイズのマークは付きます。`,
   },
 }[LANG];
 
@@ -21,15 +35,19 @@ let provider = null;
 let state = null; // { marks, errors, folders: Map, decorations: Map<string, vscode.FileDecoration>, counts: number[] }
 let managerPanel = null;
 
-function execGit(args, cwd) {
+function execGitDetailed(args, cwd) {
   return new Promise((resolve) => {
     execFile(
       'git',
       args,
-      { cwd, maxBuffer: 128 * 1024 * 1024, timeout: 120000, windowsHide: true },
-      (err, stdout) => resolve(err ? null : stdout)
+      { cwd, maxBuffer: GIT_MAX_BUFFER, timeout: GIT_TIMEOUT_MS, windowsHide: true },
+      (err, stdout) => resolve({ text: err ? null : stdout, err: err || null })
     );
   });
+}
+
+async function execGit(args, cwd) {
+  return (await execGitDetailed(args, cwd)).text;
 }
 
 function posixRel(from, to) {
@@ -52,18 +70,24 @@ class GlyphDecorationProvider {
 
 async function collectFolder(folder) {
   const folderPath = folder.uri.fsPath;
-  const data = { folder, gitRoot: null, stats: new Map(), me: null, ctxs: [] };
+  const data = { folder, gitRoot: null, stats: new Map(), me: null, ctxs: [], gitLogFailed: false };
 
-  const top = await execGit(['rev-parse', '--show-toplevel'], folderPath);
-  if (top && top.trim()) {
-    data.gitRoot = top.trim();
-    const [log, name, email] = await Promise.all([
-      execGit(['log', '--pretty=format:%x1e%at%x1f%an%x1f%ae', '--name-only'], data.gitRoot),
-      execGit(['config', 'user.name'], data.gitRoot),
-      execGit(['config', 'user.email'], data.gitRoot),
-    ]);
-    if (log) data.stats = core.parseGitLog(log);
-    data.me = { name: (name || '').trim(), email: (email || '').trim() };
+  // Workspace Trust: in Restricted Mode, do not run git inside an
+  // untrusted workspace (declared as "limited" support in package.json).
+  // File stats are still collected, so time/size/name marks keep working.
+  if (vscode.workspace.isTrusted) {
+    const top = await execGit(['rev-parse', '--show-toplevel'], folderPath);
+    if (top && top.trim()) {
+      data.gitRoot = top.trim();
+      const [logRes, name, email] = await Promise.all([
+        execGitDetailed(['log', '--pretty=format:%x1e%at%x1f%an%x1f%ae', '--name-only'], data.gitRoot),
+        execGit(['config', 'user.name'], data.gitRoot),
+        execGit(['config', 'user.email'], data.gitRoot),
+      ]);
+      if (logRes.text) data.stats = core.parseGitLog(logRes.text);
+      else data.gitLogFailed = true;
+      data.me = { name: (name || '').trim(), email: (email || '').trim() };
+    }
   }
 
   let fileUris = [];
@@ -77,31 +101,39 @@ async function collectFolder(folder) {
     fileUris = [];
   }
 
-  for (const uri of fileUris) {
-    if (uri.scheme !== 'file') continue;
-    const relPath = posixRel(folderPath, uri.fsPath);
-    if (!relPath || relPath.startsWith('..')) continue;
-    let stat = null;
-    try {
-      stat = await vscode.workspace.fs.stat(uri);
-    } catch {
-      continue;
-    }
-    if (stat.type !== vscode.FileType.File) continue;
-    let stats = null;
-    if (data.gitRoot) {
-      const relToGit = posixRel(data.gitRoot, uri.fsPath);
-      stats = data.stats.get(relToGit) || null;
-    }
-    data.ctxs.push({
-      uri,
-      relPath,
-      name: path.posix.basename(relPath),
-      sizeBytes: stat.size,
-      mtimeMs: stat.mtime,
-      stats,
-      me: data.me,
-    });
+  // Stat in bounded parallel batches instead of one await per file, so a
+  // large workspace does not pay a full round-trip per file in sequence.
+  for (let i = 0; i < fileUris.length; i += STAT_BATCH_SIZE) {
+    const batch = fileUris.slice(i, i + STAT_BATCH_SIZE);
+    const settled = await Promise.all(
+      batch.map(async (uri) => {
+        if (uri.scheme !== 'file') return null;
+        const relPath = posixRel(folderPath, uri.fsPath);
+        if (!relPath || relPath.startsWith('..')) return null;
+        let stat = null;
+        try {
+          stat = await vscode.workspace.fs.stat(uri);
+        } catch {
+          return null;
+        }
+        if (stat.type !== vscode.FileType.File) return null;
+        let stats = null;
+        if (data.gitRoot) {
+          const relToGit = posixRel(data.gitRoot, uri.fsPath);
+          stats = data.stats.get(relToGit) || null;
+        }
+        return {
+          uri,
+          relPath,
+          name: path.posix.basename(relPath),
+          sizeBytes: stat.size,
+          mtimeMs: stat.mtime,
+          stats,
+          me: data.me,
+        };
+      })
+    );
+    for (const ctx of settled) if (ctx) data.ctxs.push(ctx);
   }
   return data;
 }
@@ -142,14 +174,26 @@ function rebuildMatches() {
   if (managerPanel) sendManagerState();
 }
 
+// Collection is slow (git log + stats), and several triggers can fire
+// while one run is still in flight. Each run takes a generation number;
+// only the newest run may publish its result, so a stale collection that
+// finishes late cannot overwrite fresher state.
+let collectGeneration = 0;
+
 async function recollectAll() {
+  const gen = ++collectGeneration;
   const folders = vscode.workspace.workspaceFolders || [];
   const collected = new Map();
   for (const folder of folders) {
     collected.set(folder.uri.toString(), await collectFolder(folder));
+    if (gen !== collectGeneration) return; // superseded by a newer run
   }
-  if (!state) state = { marks: [], errors: [], folders: collected, decorations: new Map(), counts: [] };
+  if (gen !== collectGeneration) return;
+  if (!state) state = { marks: [], errors: [], notices: [], folders: collected, decorations: new Map(), counts: [] };
   else state.folders = collected;
+  state.notices = [...collected.values()]
+    .filter((d) => d.gitLogFailed)
+    .map((d) => STR.gitLogFailed(d.folder.name));
   loadMarks();
   rebuildMatches();
 }
@@ -163,7 +207,7 @@ function loadMarks() {
 }
 
 function managerHtml(webview) {
-  const nonce = String(Date.now()) + Math.random().toString(36).slice(2);
+  const nonce = crypto.randomBytes(16).toString('hex');
   const cssUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'manager.css'));
   const jsUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'manager.js'));
   return `<!DOCTYPE html>
@@ -208,6 +252,7 @@ function sendManagerState() {
     marks: state.rawMarks || [],
     countsByRaw,
     errors: state.errors || [],
+    notices: state.notices || [],
     target,
     hasWorkspace: (vscode.workspace.workspaceFolders || []).length > 0,
   });
@@ -240,11 +285,20 @@ function openManager(context) {
     } else if (msg.type === 'paletteStyle' && core.PALETTE_STYLES.includes(msg.style)) {
       await vscode.workspace.getConfiguration('glyphMark').update('paletteStyle', msg.style, vscode.ConfigurationTarget.Global);
     } else if (msg.type === 'save' && Array.isArray(msg.marks)) {
+      // Re-validate on the host side: the form checks its own input, but
+      // what gets persisted must not depend on the sender being our form.
+      // Write the normalized marks; on errors, hand them back to the form
+      // and write nothing.
+      const { marks, errors } = core.validateMarks(msg.marks);
+      if (errors.length) {
+        managerPanel.webview.postMessage({ type: 'saveErrors', errors });
+        return;
+      }
       const target =
         msg.target === 'workspace' && (vscode.workspace.workspaceFolders || []).length
           ? vscode.ConfigurationTarget.Workspace
           : vscode.ConfigurationTarget.Global;
-      await vscode.workspace.getConfiguration('glyphMark').update('marks', msg.marks, target);
+      await vscode.workspace.getConfiguration('glyphMark').update('marks', marks, target);
       // The configuration change event reloads marks and rebuilds decorations;
       // the refreshed state is pushed back to the form from rebuildMatches().
     }
@@ -254,7 +308,7 @@ function openManager(context) {
 function activate(context) {
   extensionUri = context.extensionUri;
   provider = new GlyphDecorationProvider();
-  state = { marks: [], errors: [], folders: new Map(), decorations: new Map(), counts: [], rawMarks: [] };
+  state = { marks: [], errors: [], notices: [], folders: new Map(), decorations: new Map(), counts: [], rawMarks: [] };
 
   context.subscriptions.push(
     vscode.window.registerFileDecorationProvider(provider),
@@ -270,6 +324,11 @@ function activate(context) {
       }
     }),
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
+      recollectAll();
+    }),
+    // Once the user trusts the workspace, git-based marks become
+    // available (collectFolder skips git while untrusted).
+    vscode.workspace.onDidGrantWorkspaceTrust(() => {
       recollectAll();
     })
   );

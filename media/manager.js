@@ -16,6 +16,7 @@ const STR = {
     workspace: 'Workspace settings',
     save: 'Save',
     saved: 'Saved',
+    saveFailed: 'Could not save — see the notes above.',
     none: 'None',
     styleSymbol: 'Symbols',
     styleEmoji: 'Emoji',
@@ -43,6 +44,7 @@ const STR = {
     workspace: 'ワークスペース設定',
     save: '保存',
     saved: '保存しました',
+    saveFailed: '保存できませんでした。上の注意を確認してください。',
     none: 'なし',
     styleSymbol: 'シンボル',
     styleEmoji: '絵文字',
@@ -64,6 +66,7 @@ const STR = {
 };
 
 let S = null; // last state from the extension
+let saveErrors = []; // validation errors the host returned for the last save
 let rows = []; // working copy: { item, glyph, params: {key: value}, count }
 let openPaletteFor = -1;
 let paletteStyle = 'symbol'; // which picker palette is shown: 'symbol' | 'emoji'
@@ -134,11 +137,12 @@ function render() {
   app.appendChild(head);
   app.appendChild(el('p', 'intro', str.intro));
 
-  if (S.errors && S.errors.length) {
+  const notes = [...(S.errors || []), ...(S.notices || []), ...saveErrors];
+  if (notes.length) {
     const warn = el('div', 'warn');
     warn.appendChild(el('strong', null, str.warnings));
     const ul = el('ul');
-    for (const e of S.errors) ul.appendChild(el('li', null, String(e)));
+    for (const e of notes) ul.appendChild(el('li', null, String(e)));
     warn.appendChild(ul);
     app.appendChild(warn);
   }
@@ -316,6 +320,7 @@ function renderPalette(row) {
 function onSave() {
   const str = t();
   const msg = document.getElementById('msg');
+  saveErrors = [];
   const out = [];
   for (const row of rows) {
     if (!row.glyph) continue;
@@ -350,6 +355,16 @@ function onSave() {
 
 window.addEventListener('message', (ev) => {
   const data = ev.data;
+  if (data && data.type === 'saveErrors') {
+    // The host re-validated the save and rejected it: show its errors in
+    // the notes box and mark the save as failed (onSave already showed
+    // "Saved" optimistically, so override it after the re-render).
+    saveErrors = Array.isArray(data.errors) ? data.errors : [];
+    render();
+    const msg = document.getElementById('msg');
+    if (msg) msg.textContent = t().saveFailed;
+    return;
+  }
   if (data && data.type === 'state') {
     // A palette-style change also pushes fresh state; when the marks are
     // unchanged, keep the working rows so unsaved edits are not lost.
