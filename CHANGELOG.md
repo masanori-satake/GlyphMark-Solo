@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.1.2] - 2026-11-20
+
+- Fixed the assignment form keeping a stale host save error on screen: when client-side validation stops a save, the notes box is now redrawn with the previous errors cleared, and when the saved marks change (fresh state from the host), errors from the previous save attempt are dropped before the re-render. Errors still describe the last save attempt when the marks are unchanged (e.g. switching the palette style).
+
+---
+
+- 割り当てフォームで古いホスト側の保存エラーが画面に残り続ける問題を修正しました。クライアント側の検証で保存が止まったときは、直前のエラーを消して注意ボックスを描き直します。保存済みマークが変わった状態がホストから届いたときは、前回の保存時のエラーを破棄してから再描画します。マークが変わっていない場合（パレット切り替えなど）は、エラーは前回の保存時のものとしてそのまま残ります。
+
+## [1.1.1] - 2026-11-20
+
+- Hardening (security/reliability audit, no behaviour change for valid settings): glyphs now reject control, whitespace and invisible format characters, and labels are capped at 100 characters — in validation and in the `glyphMark.marks` settings schema alike. The assignment form's saves are re-validated on the extension-host side and only the normalized marks are written; validation errors are handed back to the form instead of being persisted.
+- Workspace Trust is now declared (`untrustedWorkspaces: limited`): in Restricted Mode the extension does not run git in the workspace and ignores workspace-folder values of `glyphMark.marks`, while marks from user settings and file time/size items keep working. Virtual workspaces are declared unsupported (the extension reads local git history and file stats).
+- Git collection is bounded (32 MB buffer, 60 s per git call) and file stats are collected in parallel batches; when a folder's git history cannot be read, the form now shows a note instead of the git-based marks silently disappearing. Overlapping recollections are generation-guarded so a stale result cannot overwrite fresher state, and the assignment form's CSP nonce is generated from cryptographic randomness.
+
+---
+
+- 堅牢化（セキュリティ／信頼性監査対応。有効な設定での挙動は不変）：グリフで制御文字・空白・不可視の書式文字を拒否し、ラベルに 100 文字の上限を設けました（検証ロジックと `glyphMark.marks` の設定スキーマの両方）。割り当てフォームからの保存は拡張ホスト側でも再検証し、正規化済みのマークだけを書き込みます。検証エラーは保存せずフォームへ返します。
+- ワークスペース信頼を宣言しました（`untrustedWorkspaces: limited`）：制限モードではワークスペース内で git を実行せず、`glyphMark.marks` のワークスペース設定値を採用しません。ユーザー設定のマークと、更新日時・サイズの項目は引き続き動きます。仮想ワークスペースは未対応と宣言しました（ローカルの git 履歴とファイル情報を読むため）。
+- git 収集に上限を設け（バッファ 32MB、git 1 回あたり 60 秒）、ファイル情報の取得を並行バッチ化しました。フォルダの git 履歴を読めなかった場合は、Git 由来のマークが黙って消えるのではなく、フォームに注意が表示されます。収集の重なりは世代管理で防ぎ、古い結果が新しい状態を上書きしないようにしました。割り当てフォームの CSP nonce は暗号論的乱数から生成します。
+
 ## [1.1.0] - 2026-11-18
 
 - Glyph palettes: the assignment form's picker now opens on monochrome symbols drawn in the editor's UI font (✦ ★ ● ▲ ◆ …), so marks sit quietly next to Git's letter badges. A Symbols / Emoji toggle in the palette switches to the colour emoji palette. The choice is kept in the new `glyphMark.paletteStyle` setting (default `symbol`); marks already assigned do not change.
