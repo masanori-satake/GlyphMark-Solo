@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.2] - 2026-11-20
+
+- Fixed the assignment form keeping a stale host save error on screen: when client-side validation stops a save, the notes box is now redrawn with the previous errors cleared, and when the saved marks change (fresh state from the host), errors from the previous save attempt are dropped before the re-render. Errors still describe the last save attempt when the marks are unchanged (e.g. switching the palette style).
+
+---
+
+- 割り当てフォームで古いホスト側の保存エラーが画面に残り続ける問題を修正しました。クライアント側の検証で保存が止まったときは、直前のエラーを消して注意ボックスを描き直します。保存済みマークが変わった状態がホストから届いたときは、前回の保存時のエラーを破棄してから再描画します。マークが変わっていない場合（パレット切り替えなど）は、エラーは前回の保存時のものとしてそのまま残ります。
+
 ## [1.1.1] - 2026-11-20
 
 - Hardening (security/reliability audit, no behaviour change for valid settings): glyphs now reject control, whitespace and invisible format characters, and labels are capped at 100 characters — in validation and in the `glyphMark.marks` settings schema alike. The assignment form's saves are re-validated on the extension-host side and only the normalized marks are written; validation errors are handed back to the form instead of being persisted.

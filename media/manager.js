@@ -319,8 +319,15 @@ function renderPalette(row) {
 
 function onSave() {
   const str = t();
+  // Drop errors from the previous save attempt and redraw first: without
+  // the render, the notes box would keep showing them when client-side
+  // validation stops the save below. render() rebuilds the form from the
+  // working rows, so unsaved edits are kept.
+  if (saveErrors.length) {
+    saveErrors = [];
+    render();
+  }
   const msg = document.getElementById('msg');
-  saveErrors = [];
   const out = [];
   for (const row of rows) {
     if (!row.glyph) continue;
@@ -371,7 +378,14 @@ window.addEventListener('message', (ev) => {
     const sameMarks = S && JSON.stringify(data.marks || []) === JSON.stringify(S.marks || []);
     S = data;
     if (S.palettes && S.palettes[S.paletteStyle]) paletteStyle = S.paletteStyle;
-    if (!sameMarks) buildRows();
+    if (!sameMarks) {
+      // The saved marks changed, so errors from the previous save attempt
+      // no longer describe the rows being shown: drop them before the
+      // re-render. When the marks are unchanged (e.g. a palette-style
+      // change), the errors still describe the last save attempt and stay.
+      saveErrors = [];
+      buildRows();
+    }
     render();
   }
 });
