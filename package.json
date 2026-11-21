@@ -39,6 +39,7 @@
             "additionalProperties": false,
             "properties": {
               "days": {
+                "maximum": 36500,
                 "minimum": 1,
                 "type": "number"
               },
@@ -63,6 +64,7 @@
                 "type": "string"
               },
               "kb": {
+                "maximum": 1048576,
                 "minimum": 1,
                 "type": "number"
               },
@@ -71,10 +73,12 @@
                 "type": "string"
               },
               "minCount": {
+                "maximum": 10000,
                 "minimum": 1,
                 "type": "number"
               },
               "text": {
+                "maxLength": 200,
                 "minLength": 1,
                 "type": "string"
               }
@@ -85,6 +89,7 @@
             ],
             "type": "object"
           },
+          "maxItems": 200,
           "type": "array"
         },
         "glyphMark.paletteStyle": {
@@ -148,5 +153,5 @@
     "update-version": "node scripts/update-version.js",
     "vscode:prepublish": "npm run check && npm test"
   },
-  "version": "1.1.2"
+  "version": "1.1.3"
 }

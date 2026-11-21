@@ -182,6 +182,18 @@ let collectGeneration = 0;
 
 async function recollectAll() {
   const gen = ++collectGeneration;
+  if (!state) state = { marks: [], errors: [], notices: [], folders: new Map(), decorations: new Map(), counts: [], rawMarks: [] };
+  // With no marks configured nothing can be displayed, so skip the
+  // expensive collection (full git log + findFiles/stat for every
+  // folder) entirely. Collection starts when marks are added: the
+  // configuration-change handler re-enters here once marks exist.
+  loadMarks();
+  if (!state.marks.length) {
+    state.folders = new Map();
+    state.notices = [];
+    rebuildMatches();
+    return;
+  }
   const folders = vscode.workspace.workspaceFolders || [];
   const collected = new Map();
   for (const folder of folders) {
@@ -232,13 +244,15 @@ function sendManagerState() {
   const inspect = vscode.workspace.getConfiguration('glyphMark').inspect('marks');
   const target = inspect && inspect.workspaceValue !== undefined ? 'workspace' : 'user';
   // Align match counts to the raw setting entries the form displays.
+  // Build the normalized-mark lookup once: matching raw entries against
+  // state.marks by repeated findIndex + JSON.stringify is quadratic in
+  // the number of marks.
+  const indexByKey = new Map(state.marks.map((m, i) => [JSON.stringify(m), i]));
   const countsByRaw = (state.rawMarks || []).map((entry) => {
     const single = core.validateMarks([entry]);
     if (!single.marks.length) return null;
-    const idx = state.marks.findIndex(
-      (m) => JSON.stringify(m) === JSON.stringify(single.marks[0])
-    );
-    return idx >= 0 ? state.counts[idx] || 0 : null;
+    const idx = indexByKey.get(JSON.stringify(single.marks[0]));
+    return idx !== undefined ? state.counts[idx] || 0 : null;
   });
   const styleRaw = vscode.workspace.getConfiguration('glyphMark').get('paletteStyle', core.DEFAULT_PALETTE_STYLE);
   const paletteStyle = core.PALETTE_STYLES.includes(styleRaw) ? styleRaw : core.DEFAULT_PALETTE_STYLE;
@@ -320,7 +334,11 @@ function activate(context) {
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('glyphMark')) {
         loadMarks();
-        rebuildMatches();
+        // Marks were added while collection was skipped (no marks at
+        // activation): start collecting now. Otherwise the already
+        // collected data just needs its matches rebuilt.
+        if (state.marks.length && state.folders.size === 0) recollectAll();
+        else rebuildMatches();
       }
     }),
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
