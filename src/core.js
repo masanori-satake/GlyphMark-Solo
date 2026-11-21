@@ -8,23 +8,27 @@
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_TIMES_PER_FILE = 1000;
 
+// Numeric params carry an upper bound (max) as well as a positive lower
+// bound: an unbounded value breaks the item's meaning (e.g. days so large
+// that days * DAY_MS overflows to Infinity and matches every file).
+// Bounds: days ≤ 100 years, kb ≤ 1 TB, minCount ≤ 10,000.
 const CATALOG = [
-  { id: 'createdRecent', repeatable: false, params: [{ key: 'days', kind: 'number', def: 30 }] },
-  { id: 'updatedRecent', repeatable: false, params: [{ key: 'days', kind: 'number', def: 7 }] },
+  { id: 'createdRecent', repeatable: false, params: [{ key: 'days', kind: 'number', def: 30, max: 36500 }] },
+  { id: 'updatedRecent', repeatable: false, params: [{ key: 'days', kind: 'number', def: 7, max: 36500 }] },
   {
     id: 'updatedFrequently',
     repeatable: false,
     params: [
-      { key: 'days', kind: 'number', def: 90 },
-      { key: 'minCount', kind: 'number', def: 10 },
+      { key: 'days', kind: 'number', def: 90, max: 36500 },
+      { key: 'minCount', kind: 'number', def: 10, max: 10000 },
     ],
   },
-  { id: 'untouchedLong', repeatable: false, params: [{ key: 'days', kind: 'number', def: 365 }] },
+  { id: 'untouchedLong', repeatable: false, params: [{ key: 'days', kind: 'number', def: 365, max: 36500 }] },
   { id: 'lastAuthorMe', repeatable: false, params: [] },
   { id: 'lastAuthorNamed', repeatable: true, params: [{ key: 'text', kind: 'text', def: '' }] },
   { id: 'nameContains', repeatable: true, params: [{ key: 'text', kind: 'text', def: '' }] },
   { id: 'pathContains', repeatable: true, params: [{ key: 'text', kind: 'text', def: '' }] },
-  { id: 'sizeLarge', repeatable: false, params: [{ key: 'kb', kind: 'number', def: 1024 }] },
+  { id: 'sizeLarge', repeatable: false, params: [{ key: 'kb', kind: 'number', def: 1024, max: 1048576 }] },
 ];
 
 const ITEM_NAMES = {
@@ -68,6 +72,12 @@ function catalogItem(id) {
 }
 
 const MAX_LABEL_LENGTH = 100;
+// The marks list and its text params are user/workspace-supplied and are
+// re-evaluated against every file on each recalculation, so both are
+// capped: an unbounded list makes evaluation files × marks, and an
+// unbounded text makes every substring search scan a huge needle.
+const MAX_MARKS = 200;
+const MAX_TEXT_LENGTH = 200;
 
 // Characters that must never appear in a badge glyph: C0/C1 controls and
 // whitespace (a badge is rendered as-is, so these corrupt the Explorer
@@ -138,7 +148,12 @@ function validateMarks(raw) {
     errors.push('glyphMark.marks must be an array');
     return { marks, errors };
   }
-  raw.forEach((entry, index) => {
+  let entries = raw;
+  if (raw.length > MAX_MARKS) {
+    errors.push(`glyphMark.marks must have ${MAX_MARKS} entries or fewer`);
+    entries = raw.slice(0, MAX_MARKS);
+  }
+  entries.forEach((entry, index) => {
     const where = `marks[${index}]`;
     if (!entry || typeof entry !== 'object') {
       errors.push(`${where}: not an object`);
@@ -170,11 +185,19 @@ function validateMarks(raw) {
           errors.push(`${where}: ${p.key} must be a positive number`);
           return;
         }
+        if (p.max !== undefined && n > p.max) {
+          errors.push(`${where}: ${p.key} must be ${p.max} or less`);
+          return;
+        }
         mark[p.key] = n;
       } else {
         const s = v === undefined ? p.def : String(v);
         if (!s.trim()) {
           errors.push(`${where}: ${p.key} must not be empty`);
+          return;
+        }
+        if (s.length > MAX_TEXT_LENGTH) {
+          errors.push(`${where}: ${p.key} must be ${MAX_TEXT_LENGTH} characters or fewer`);
           return;
         }
         mark[p.key] = s;
@@ -336,6 +359,8 @@ function folderTooltip(folderResult, lang) {
 module.exports = {
   DAY_MS,
   MAX_LABEL_LENGTH,
+  MAX_MARKS,
+  MAX_TEXT_LENGTH,
   CATALOG,
   ITEM_NAMES,
   PALETTE,

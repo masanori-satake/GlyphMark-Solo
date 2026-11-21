@@ -116,6 +116,52 @@ test('validateMarks drops control-char glyphs and overlong labels', () => {
   assert.equal(ok.marks[0].label.length, core.MAX_LABEL_LENGTH); // trimmed, at the cap
 });
 
+test('validateMarks rejects numeric params above their upper bounds', () => {
+  const over = core.validateMarks([
+    { item: 'createdRecent', glyph: '★', days: 36501 },
+    { item: 'sizeLarge', glyph: '★', kb: 1048577 },
+    { item: 'updatedFrequently', glyph: '★', days: 90, minCount: 10001 },
+    { item: 'updatedFrequently', glyph: '★', days: 1e308 },
+  ]);
+  assert.equal(over.marks.length, 0);
+  assert.equal(over.errors.length, 4);
+
+  const atMax = core.validateMarks([
+    { item: 'createdRecent', glyph: '★', days: 36500 },
+    { item: 'sizeLarge', glyph: '★', kb: 1048576 },
+    { item: 'updatedFrequently', glyph: '★', days: 90, minCount: 10000 },
+  ]);
+  assert.equal(atMax.errors.length, 0);
+  assert.equal(atMax.marks.length, 3);
+});
+
+test('validateMarks caps the marks list and the text param length', () => {
+  const many = Array.from({ length: core.MAX_MARKS + 5 }, () => ({
+    item: 'nameContains',
+    glyph: '★',
+    text: 'x',
+  }));
+  const capped = core.validateMarks(many);
+  assert.equal(capped.marks.length, core.MAX_MARKS);
+  assert.equal(capped.errors.length, 1);
+
+  const atCap = core.validateMarks(many.slice(0, core.MAX_MARKS));
+  assert.equal(atCap.marks.length, core.MAX_MARKS);
+  assert.equal(atCap.errors.length, 0);
+
+  const longText = core.validateMarks([
+    { item: 'nameContains', glyph: '★', text: 'x'.repeat(core.MAX_TEXT_LENGTH + 1) },
+  ]);
+  assert.equal(longText.marks.length, 0);
+  assert.equal(longText.errors.length, 1);
+
+  const okText = core.validateMarks([
+    { item: 'nameContains', glyph: '★', text: 'x'.repeat(core.MAX_TEXT_LENGTH) },
+  ]);
+  assert.equal(okText.errors.length, 0);
+  assert.equal(okText.marks.length, 1);
+});
+
 function ctxFor(over) {
   return Object.assign(
     { relPath: 'src/a.js', name: 'a.js', sizeBytes: 100, stats: null, mtimeMs: null, me: null },

@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.3] - 2026-11-22
+
+- Hardening (security/reliability audit, no behaviour change for valid settings): numeric mark parameters now have upper bounds in validation and in the `glyphMark.marks` settings schema alike (`days` ≤ 36500, `kb` ≤ 1048576, `minCount` ≤ 10000), so an extreme value can no longer overflow and make an item match every file. The marks list is capped at 200 entries and the `text` parameter at 200 characters.
+- The assignment form's per-entry match counts are now aligned through a single lookup map instead of repeated linear searches, so recalculation no longer slows down quadratically as the number of marks grows.
+- When no marks are configured, activation no longer collects the full git history and file stats for every workspace folder; collection starts when marks are added through a settings change.
+
+---
+
+- 堅牢化（セキュリティ／信頼性監査対応。有効な設定での挙動は不変）：数値パラメータに上限を設けました（`days` ≤ 36500、`kb` ≤ 1048576、`minCount` ≤ 10000。検証ロジックと `glyphMark.marks` の設定スキーマの両方）。極端な値で計算が溢れて全ファイルに一致するようなことがなくなります。マークの件数は最大200件、`text` パラメータは最大200文字に制限しました。
+- 割り当てフォームの項目別マッチ件数を、線形探索の繰り返しではなく一度だけ構築する対応表で引くようにし、マーク件数が増えても再計算が二乗的に重くならないようにしました。
+- マークが未設定の場合は、起動時に全ワークスペースフォルダの git 履歴とファイル情報の収集を行わないようにしました。設定でマークが追加された時点で収集を開始します。
+
 ## [1.1.2] - 2026-11-20
 
 - Fixed the assignment form keeping a stale host save error on screen: when client-side validation stops a save, the notes box is now redrawn with the previous errors cleared, and when the saved marks change (fresh state from the host), errors from the previous save attempt are dropped before the re-render. Errors still describe the last save attempt when the marks are unchanged (e.g. switching the palette style).
